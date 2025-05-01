@@ -11,9 +11,9 @@ class GameObject:
         self.y_rotation = 0
         self.z_rotation = 0
         self.size = size
+        self.game_objects = {}
 
-        # TODO: need a place to store the physics objects if the
-        # subclasses create one
+
 
     @property
     def physics(self):

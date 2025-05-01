@@ -15,6 +15,14 @@ controls = {
     'escape': 'toggleMouseMove',
     't': 'toggleTexture',
     'mouse1': 'toggleTexture',
+    'w': 'forward',
+    'a': 'left',
+    's': 'backward',
+    'd': 'right',
+    'w-repeat': 'forward',
+    'a-repeat': 'left',
+    's-repeat': 'backward',
+    'd-repeat': 'right',
 }
 
 held_keys = {
@@ -72,6 +80,7 @@ class Main(ShowBase):
     def input_event(self, event):
         self.input_events[event] = True
 
+
     def tick(self, task):
         if 'toggleMouseMove' in self.input_events:
             if self.CursorOffOn == 'Off':
@@ -80,50 +89,32 @@ class Main(ShowBase):
             else:
                 self.CursorOffOn = 'Off'
                 self.props.setCursorHidden(True)
-
             self.win.requestProperties(self.props)
 
         pub.sendMessage('input', events=self.input_events)
 
-        picked_object = self.get_nearest_object()
-        if picked_object:
-            picked_object.selected()
+        # Top-down camera setup
+        if self.player:
+            x, y, z = self.player.position
+            # Position camera above player looking down
+            self.camera.setPos(x, y, z + 55)
+            self.camera.lookAt(x, y, z)
+            #print(f"Camera at {self.camera.getPos()}, looking at {self.camera.getHpr()}")
 
-        if self.CursorOffOn == 'Off':
-            # TODO: camera mouse rotation needs to work with the physics object
-            # we only want z rotations translated to the player.
-            md = self.win.getPointer(0)
-            x = md.getX()
-            y = md.getY()
+        # Handle player movement
+        move_speed = 1.75
+        move_vec = [0, 0]
+        if inputState.isSet('moveForward'):  # W key
+            move_vec[1] += move_speed
+        if inputState.isSet('moveBackward'):  # S key
+            move_vec[1] -= move_speed
+        if inputState.isSet('moveLeft'):  # A key
+            move_vec[0] -= move_speed
+        if inputState.isSet('moveRight'):  # D key
+            move_vec[0] += move_speed
 
-            if self.win.movePointer(0, base.win.getXSize() // 2, self.win.getYSize() // 2):
-                z_rotation = self.camera.getH() - (x - self.win.getXSize() / 2) * self.SpeedRot
-                x_rotation = self.camera.getP() - (y - self.win.getYSize() / 2) * self.SpeedRot
-                if (x_rotation <= -90.1):
-                    x_rotation = -90
-                if (x_rotation >= 90.1):
-                    x_rotation = 90
-
-                self.player.z_rotation = z_rotation
-                self.player.x_rotation = x_rotation
-
-        h = self.player.z_rotation
-        p = self.player.x_rotation
-        r = self.player.y_rotation
-        self.camera.setHpr(h, p, r)
-
-        # This seems to work to prevent seeing into objects the player collides with.
-        # It moves the camera a bit back from the center of the player object.
-        q = Quat()
-        q.setHpr((h, p, r))
-        forward = q.getForward()
-        delta_x = -forward[0]
-        delta_y = -forward[1]
-        delta_z = -forward[2]
-        x, y, z = self.player.position
-        z_adjust = self.player.size[1]/2
-        distance_factor = 0.5
-        self.camera.set_pos(x + delta_x*distance_factor, y + delta_y*distance_factor, z + delta_z*distance_factor + z_adjust)
+        if self.player and (move_vec[0] != 0 or move_vec[1] != 0):
+            self.player.move(move_vec)
 
         self.game_world.tick(globalClock.getDt())
         self.player_view.tick()
@@ -162,6 +153,13 @@ class Main(ShowBase):
         # create model and view
         self.game_world = GameWorld(debugNode)
         self.player_view = WorldView(self.game_world)
+
+        debugNode = BulletDebugNode('Debug')
+        debugNode.showWireframe(True)
+        debugNode.showConstraints(True)
+        debugNode.showBoundingBoxes(True)  # Make sure this is enabled
+        debugNP = render.attachNewNode(debugNode)
+        debugNP.show()
 
 
 if __name__ == '__main__':
