@@ -16,32 +16,26 @@ class GameWorld:
 
         if debugNode:
             self.physics_world.setDebugNode(debugNode)
-        self.kind_to_shape = dict(wall=self.create_box, player=self.create_capsule, collectible=self.create_box,floor=self.create_box)
+        self.kind_to_shape = dict(wall=self.create_box, player=self.create_capsule, collectible=self.create_box)
 
     def setup_collision_groups(self):
-        self.wall_group = 1 << 0
-        self.player_group = 1 << 1
-        self.floor_group = 1 << 2
-        self.collectible_group = 1 << 3
+        # Example groups (adjust as needed)
+        self.wall_group = 1
+        self.player_group = 1
+        self.collectible_group = 4
 
-        # Apply masks to existing objects
+        # Set collision masks
         for obj in self.game_objects.values():
             if obj.physics:
                 if obj.kind == "wall":
                     obj.physics.setIntoCollideMask(self.wall_group)
-                    obj.physics.setCollideMask(self.player_group)  # Player collides with walls
                 elif obj.kind == "player":
                     obj.physics.setIntoCollideMask(self.player_group)
-                    obj.physics.setCollideMask(self.wall_group | self.floor_group | self.collectible_group)
-                elif obj.kind == "floor":
-                    obj.physics.setIntoCollideMask(self.floor_group)
-                    obj.physics.setCollideMask(self.player_group)  # Player collides with floor
                 elif obj.kind == "collectible":
                     obj.physics.setIntoCollideMask(self.collectible_group)
-                    obj.physics.setCollideMask(self.player_group)  # Player collides with collectibles
 
     def create_box(self, position, size, kind, mass):
-        # Make sure size fits visual
+        # Make sure size matches visual representation
         half_extents = Vec3(size[0] / 2, size[1] / 2, size[2] / 2)
         shape = BulletBoxShape(half_extents)
         node = BulletRigidBodyNode(kind)
@@ -92,21 +86,19 @@ class GameWorld:
         self.physics_world.do_physics(dt)
 
     def load_world(self):
+        # Create maze walls
+        self.create_object([0, 0, 0], "wall", (100, 100, 1.0), 0, GameObject)  # Floor
 
-        # Floor
-        self.create_object([0, 0, 0], "floor", (100, 100, 1), 0, GameObject)
-
-        # Walls
-        self.create_object([0, -20, 1], "wall", (0.5, 40, 15), 0, GameObject)  # Vertical
-        self.create_object([0, -20, 1], "wall", (40, 0.5, 15), 0, GameObject)  # Horizontal
+        # Maze walls
+        self.create_object([0, -20, 0], "wall", (1, 20, 20), 0, GameObject)
 
         # Collectible items
-        self.create_object([-6, 0, 1], "collectible", (0.5, 0.5, 0.5), 0, GameObject)
-        self.create_object([6, 0, 1], "collectible", (0.5, 0.5, 0.5), 0, GameObject)
-        #self.create_object([0, 0, 1], "collectible", (0.5, 0.5, 0.5), 0, GameObject)
+        self.create_object([-6, 0, 0], "collectible", (0.5, 0.5, 0.5), 0, GameObject)
+        self.create_object([6, 0, 0], "collectible", (0.5, 0.5, 0.5), 0, GameObject)
+        self.create_object([0, 0, 0], "collectible", (0.5, 0.5, 0.5), 0, GameObject)
 
         # Player
-        self.create_object([0, 0, 2], "player", (1, 1, 1), 10, Player)
+        self.create_object([0, 0, 0], "player", (1, 1, 1), 10, Player)
 
     def get_property(self, key):
         if key in self.properties:

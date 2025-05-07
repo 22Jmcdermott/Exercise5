@@ -1,14 +1,16 @@
 from panda3d.core import Vec3
+
 from game_object import GameObject
 from pubsub import pub
+
 
 class Player(GameObject):
     def __init__(self, position, kind, id, size, physics):
         super().__init__(position, kind, id, size, physics)
         self.collected_items = 0
-        pub.subscribe(self.handle_input, 'input')
+        pub.subscribe(self.handle_input, 'input')  # Changed to handle_input
 
-    def handle_input(self, events=None):  # Made events parameter optional
+    def handle_input(self, events):  # Added this method
         # Handle input events here if needed
         pass
 
@@ -29,4 +31,3 @@ class Player(GameObject):
             # Check for win condition
             if self.collected_items >= 3:
                 print("You win! Collected all items!")
-                pub.sendMessage('game_won')

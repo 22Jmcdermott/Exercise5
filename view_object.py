@@ -1,76 +1,61 @@
 import pubsub.pub
-from panda3d.core import CollisionBox, CollisionNode, Vec4
+from panda3d.core import CollisionBox, CollisionNode
 from pubsub import pub
-
 
 class ViewObject:
     def __init__(self, game_object):
         self.game_object = game_object
-        self.model = None  # Initialize model attribute
 
-        if game_object.kind == "wall":
-            self.model = base.loader.loadModel("Models/cube1")
-            self.model.setColor(Vec4(0.8, 0.6, 0.4, 1))  # Brown
-            self.model.setLightOff(True)  # Disable lighting
-            self.model.setScale(*game_object.size)
-        elif game_object.kind == "floor":
-            self.model = base.loader.loadModel("Models/cube1")
-            self.model.setTexture(base.loader.loadTexture("Textures/maps/crate.png"))
-            self.model.setScale(*game_object.size)
-        elif game_object.kind == "collectible":
-            self.model = base.loader.loadModel("Models/Icosahedron")
-            self.model.setColor(Vec4(1, 1, 0, 1))
-            self.model.setLightOff(True)  # Disable lighting
-        elif game_object.kind == "player":
-            self.model = base.loader.loadModel("Models/Icosahedron")
-            self.model.setColor(Vec4(0, 0.5, 1, 1))  # Blue
-            self.model.setLightOff(True)
-            self.model.setScale(0.5, 0.5, 0.5)
-        else:  # Default cube
-            self.model = base.loader.loadModel("Models/Cube")
-            self.model.setColor(Vec4(0.5, 0.5, 0.5, 1))  # Gray
-            self.model.setLightOff(True)
         if self.game_object.physics:
             self.node_path = base.render.attachNewNode(self.game_object.physics)
         else:
             self.node_path = base.render.attachNewNode(self.game_object.kind)
 
 
-        if self.model:
-            self.model.reparentTo(self.node_path)
-            bounds = self.model.getTightBounds()
-            # bounds is two vectors
-            bounds = bounds[1] - bounds[0]
-            # bounds is now the widths with bounds[0] the x width, bounds[1] the y depth, bounds[2] the z height
-            size = game_object.size
+        if game_object.kind == "wall":
+            self.model = base.loader.loadModel("Models/cube")
+            self.model.setTexture(base.loader.loadTexture("Textures/maps/crate.png"))
+        elif game_object.kind == "collectible":
+            self.model = base.loader.loadModel("Models/Icosahedron")
+        elif game_object.kind == "player":
+            self.model = base.loader.loadModel("Models/anubus")
+            self.model.setTexture(base.loader.loadTexture("Textures/maps/Material_#12_CL.tif"))
+            # Scale the model appropriately
+            self.model.setScale(0.5, 0.5, 0.5)
+        else:
+            self.model = base.loader.loadModel("Models/cube")
+            self.model.setTexture(base.loader.loadTexture("Textures/crate.png"))
 
-            x_scale = size[0] / bounds[0]
-            y_scale = size[1] / bounds[1]
-            z_scale = size[2] / bounds[2]
+        self.model.reparentTo(self.node_path)
+        self.model.setPos(*game_object.position)
 
-            self.model.setScale(x_scale, y_scale, z_scale)
+        self.model.setTag('selectable', '')
+        self.model.setPythonTag("owner", self)
 
-        self.is_selected = False
-        self.texture_on = True
-        self.toggle_texture_pressed = False
-        pub.subscribe(self.toggle_texture, 'input')
+        bounds = self.model.getTightBounds()
+        bounds = bounds[1] - bounds[0]
+        size = game_object.size
+        x_scale = size[0] / bounds[0]
+        y_scale = size[1] / bounds[1]
+        z_scale = size[2] / bounds[2]
+        self.model.setScale(x_scale, y_scale, z_scale)
 
-    def deleted(self):
-        if self.model:
-            self.model.removeNode()
-        self.node_path.removeNode()
-
-    def toggle_texture(self, events=None):
-        if 'toggleTexture' in events:
-            self.toggle_texture_pressed = True
+        if game_object.kind == "collectible":
+            self.model.setHpr(0, 0, 0)
+            self.model.hprInterval(2.0, (360, 0, 0)).loop()
 
     def tick(self):
-        if not self.game_object.physics:
-            h = self.game_object.z_rotation
-            p = self.game_object.x_rotation
-            r = self.game_object.y_rotation
-            self.model.setHpr(h, p, r)
-            self.model.setPos(*self.game_object.position)
+        if self.game_object.physics:
+            transform = self.game_object.physics.getTransform()
+            pos = transform.getPos()
+            self.node_path.setPos(pos)
+            self.node_path.setQuat(transform.getQuat())
+        else:
+            # Fallback to game object's position
+            self.node_path.setPos(*self.game_object.position)
+            self.node_path.setHpr(self.game_object.z_rotation,
+                                  self.game_object.y_rotation,
+                                  self.game_object.x_rotation)
 
-        self.toggle_texture_pressed = False
-        self.game_object.is_selected = False
+    def deleted(self):
+        self.node_path.removeNode()
